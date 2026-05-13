@@ -1,11 +1,19 @@
 # SPDX-FileCopyrightText: © 2026 Zach Nielsen
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge
 
-# Must match the override in tb.v.
+# In gate-level simulation the synthesized netlist bakes in the real
+# 1 Hz divider (TICK_DIV = 50_000_000), so the countdown tests would need
+# tens of millions of simulated clock cycles to see a single decrement.
+# We skip them and run a smoke test instead.
+GATES = os.getenv("GATES") == "yes"
+
+# Must match the override in tb.v for RTL simulation.
 TICK_DIV = 4
 
 SEG7 = {
@@ -53,7 +61,7 @@ def buzzer(dut):
     return (int(dut.uo_out.value) >> 7) & 1
 
 
-@cocotb.test()
+@cocotb.test(skip=GATES)
 async def test_full_countdown(dut):
     """Mode 0: count 30 → 0 over 30 ticks; buzzer goes high at 0 and stays high."""
     await start_clock(dut)
@@ -80,7 +88,7 @@ async def test_full_countdown(dut):
     assert buzzer(dut) == 1
 
 
-@cocotb.test()
+@cocotb.test(skip=GATES)
 async def test_reset_button(dut):
     """Pressing ui_in[0] mid-countdown reloads to 30."""
     await start_clock(dut)
@@ -104,7 +112,7 @@ async def test_reset_button(dut):
     assert read_count(dut, 0) < 30
 
 
-@cocotb.test()
+@cocotb.test(skip=GATES)
 async def test_pause_holds_value(dut):
     """ui_in[1] held high freezes the count."""
     await start_clock(dut)
@@ -128,7 +136,7 @@ async def test_pause_holds_value(dut):
     assert read_count(dut, 0) < pre_pause, "Count should advance after un-pause"
 
 
-@cocotb.test()
+@cocotb.test(skip=GATES)
 async def test_seven_segment_mode(dut):
     """Mode 1: outputs decode as expected 7-segment digits."""
     await start_clock(dut)
@@ -144,3 +152,20 @@ async def test_seven_segment_mode(dut):
         expected = 30 - tick_idx
         actual = read_count(dut, 1)
         assert actual == expected, f"At tick {tick_idx}, 7-seg decoded {actual}, expected {expected}"
+
+
+@cocotb.test(skip=not GATES)
+async def test_gl_smoke(dut):
+    """Gate-level smoke: confirm reset loads the expected count and outputs."""
+    await start_clock(dut)
+    await reset(dut, mode=0)
+
+    await FallingEdge(dut.clk)
+    # Binary readout on uo[4:0] must be 30 right after reset.
+    assert read_count(dut, 0) == 30, f"GL reset value should be 30, got {read_count(dut, 0)}"
+    assert buzzer(dut) == 0
+
+    # In mode 1 the same count must decode to two valid 7-seg digits.
+    dut.ui_in.value = 0b100  # mode=1
+    await FallingEdge(dut.clk)
+    assert read_count(dut, 1) == 30, "GL 7-seg readout should be 30 after reset"
