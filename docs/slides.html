@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>30-Second Shot Clock — Final Project — Zach Nielsen</title>
+
+  <!--
+    To present:
+      1. Open this file in any modern browser (double-click, or `open slides.html`).
+      2. Press F to fullscreen, S to open speaker-notes window.
+      3. Arrow keys / Space to navigate.
+
+    To produce a PDF (e.g. for projection without internet):
+      Open `slides.html?print-pdf` in Chrome, then File → Print → Save as PDF.
+  -->
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+
+  <style>
+    .reveal h1 { font-size: 1.9em; }
+    .reveal h2 { font-size: 1.3em; color: #4ec9b0; margin-bottom: 0.6em; text-transform: none; }
+    .reveal h3 { font-size: 1.05em; color: #9cdcfe; }
+    .reveal p, .reveal li { font-size: 0.85em; }
+    .reveal pre { box-shadow: none; font-size: 0.55em; width: 90%; }
+    .reveal pre code { padding: 0.6em 1em; max-height: none; }
+    .reveal table { font-size: 0.65em; margin: 0 auto; border-collapse: collapse; }
+    .reveal table th, .reveal table td { padding: 0.3em 0.7em; border: 1px solid #555; text-align: left; }
+    .reveal table th { background: #1e1e1e; color: #4ec9b0; }
+    .reveal img.slide-image { display: block; margin: 0.4em auto; max-height: 60vh; max-width: 90%; border-radius: 4px; }
+    .reveal .small { font-size: 0.7em; color: #aaa; }
+    .reveal .accent { color: #4ec9b0; }
+    .reveal .muted { color: #888; }
+    .reveal .center { text-align: center; }
+    .reveal section.title-slide h1 { color: #4ec9b0; margin-bottom: 0.2em; }
+    .reveal section.title-slide .subtitle { color: #ccc; font-size: 0.7em; margin: 0.1em; }
+    .reveal section.title-slide .author { color: #fff; font-size: 0.95em; margin-top: 0.6em; }
+    .reveal ul li { margin: 0.25em 0; }
+    .reveal code { color: #d7ba7d; }
+    .countdown { font-size: 1.6em; color: #4ec9b0; text-align: center; margin: 0.4em 0; letter-spacing: 0.15em; font-family: monospace; }
+    .pass-banner { display: inline-block; background: #1e3a1e; color: #4ade80; padding: 0.3em 1em; border-radius: 4px; font-family: monospace; font-size: 0.9em; margin-top: 0.4em; }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- Slide 1: Title -->
+      <section class="title-slide">
+        <h1>30-Second Basketball Shot Clock</h1>
+        <p class="subtitle">Tiny Tapeout · sky130 · 50 MHz</p>
+        <p class="author">Zach Nielsen</p>
+        <p class="subtitle muted">ECE429 — Final Project — May 13, 2026</p>
+        <aside class="notes">
+          Hi, I'm Zach. For my final project I built a 30-second basketball shot clock as a single-tile Tiny Tapeout design. It counts down once per second from 30 to 0, has reset and pause buttons, lights a buzzer at zero, and can drive either five binary LEDs or two 7-segment digits. I'll walk you through the design, the verification, and the layout in about five minutes.
+        </aside>
+      </section>
+
+      <!-- Slide 2: What is Tiny Tapeout -->
+      <section>
+        <h2>What is Tiny Tapeout?</h2>
+        <ul>
+          <li>Educational program — get your digital design <em>actually fabricated</em> for ~$50</li>
+          <li>Many small student designs share one die in the SkyWater 130 nm process</li>
+          <li>Each project gets a <strong>1 × 1 tile ≈ 167 µm × 108 µm</strong></li>
+          <li>Open-source EDA flow: Verilog → Yosys → LibreLane → GDSII</li>
+          <li>Standard pinout: 8 inputs, 8 outputs, 8 bidirectionals, plus <code>clk</code>, <code>rst_n</code>, <code>ena</code></li>
+        </ul>
+        <aside class="notes">
+          Quick context. Tiny Tapeout pools many small student designs onto one die and ships them to SkyWater for manufacturing. You design in Verilog, an open-source toolchain — Yosys for synthesis, LibreLane for place-and-route — turns it into a physical layout. Each student gets a fixed-size tile and a fixed pinout: eight inputs, eight outputs, eight bidirectionals, plus clock and reset.
+        </aside>
+      </section>
+
+      <!-- Slide 3: The design -->
+      <section>
+        <h2>The design</h2>
+        <p>A <strong>30-second basketball shot clock</strong> on one chip:</p>
+        <p class="countdown">30 → 29 → 28 → … → 1 → 0 🔔</p>
+        <ul>
+          <li>Counts down once per <strong>second</strong>, derived from the 50 MHz Tiny Tapeout clock</li>
+          <li><code>ui[0]</code> reloads to 30; <code>ui[1]</code> pauses; <code>ui[2]</code> picks display mode</li>
+          <li><code>uo[7]</code> lights the buzzer when the count reaches 0</li>
+          <li>Total core: ~35 flip-flops + a 7-segment lookup + a small output mux</li>
+        </ul>
+        <aside class="notes">
+          The design is a 30-second basketball shot clock. It counts down once per second from 30 to 0. There are three control inputs: ui[0] is a reset button that reloads to 30, ui[1] pauses the count while held high, and ui[2] is a mode switch I'll come back to. uo[7] is the buzzer output — it lights when the count hits zero. The whole core is about thirty-five flops: a 26-bit clock divider, a 5-bit countdown register, plus some combinational logic.
+        </aside>
+      </section>
+
+      <!-- Slide 4: Why this design -->
+      <section>
+        <h2>Why a shot clock?</h2>
+        <p>Small project, but it exercises the <em>full</em> digital design vocabulary:</p>
+        <ul>
+          <li><strong>Clock division</strong> — 50 MHz down to 1 Hz with a counter (~26 flops)</li>
+          <li><strong>Sequential state with control</strong> — reset, pause, saturating decrement</li>
+          <li><strong>Combinational decode</strong> — binary count → BCD → 7-segment patterns</li>
+          <li><strong>Multiplexed I/O</strong> — fitting 20 desired output signals into 16 chip pins</li>
+          <li>And it's <em>visible</em> — the demo is two 7-seg digits counting down to a buzzer</li>
+        </ul>
+        <aside class="notes">
+          Why a shot clock? Two reasons. First, it's a small enough design to actually finish in a few hours and ship to silicon, but it still exercises the full digital-design vocabulary. I needed clock division to derive 1 hertz from the 50 megahertz Tiny Tapeout clock. I needed sequential state with multiple control inputs — reset, pause, and a saturating decrement. I needed combinational decoding from binary to BCD to seven-segment. And I needed to multiplex outputs because I wanted to support two different display options on a chip that only has sixteen output pins. Second, it's visible — you wire up a couple of 7-segment displays and the audience literally watches it count down.
+        </aside>
+      </section>
+
+      <!-- Slide 5: Architecture -->
+      <section>
+        <h2>Architecture</h2>
+        <img class="slide-image" src="block_diagram.png" alt="Shot clock block diagram">
+        <p class="small">Clock divider → down counter → BCD split → 7-seg decode → output mux</p>
+        <aside class="notes">
+          Here's the architecture. Left side: the 50 MHz clock feeds a 26-bit divider that emits a one-cycle tick once per second. The tick drives the 5-bit countdown register, which also takes the reset and pause inputs. The counter saturates at zero — once it hits zero it stays there until reset. The current count feeds a BCD-split block that produces a tens digit and a ones digit, each of which goes through a 7-segment decoder. Finally, the output mux on the right picks between routing the raw 5-bit count to LEDs or routing the two 7-segment patterns to the segment pins, controlled by the mode input. The buzzer output is just a simple equality check: count equals zero.
+        </aside>
+      </section>
+
+      <!-- Slide 6: The Verilog -->
+      <section>
+        <h2>The Verilog (the entire countdown)</h2>
+<pre><code class="language-verilog" data-trim>
+// 1 Hz tick — single-cycle pulse from the 50 MHz clock
+always @(posedge clk) begin
+  if (!rst_n)                            div_count &lt;= 0;
+  else if (div_count == TICK_DIV - 1) begin
+    div_count &lt;= 0;
+    tick      &lt;= 1'b1;
+  end else begin
+    div_count &lt;= div_count + 1'b1;
+    tick      &lt;= 1'b0;
+  end
+end
+
+// Shot clock — synchronous reset, saturates at 0
+always @(posedge clk) begin
+  if (!rst_n || reset_btn)
+    shot_clock &lt;= 5'd30;
+  else if (tick &amp;&amp; !pause_btn &amp;&amp; shot_clock != 0)
+    shot_clock &lt;= shot_clock - 1'b1;
+end
+</code></pre>
+        <p class="small accent center">Synchronous reset → maps cleanly to sky130 D-flop + 2:1 mux cells</p>
+        <aside class="notes">
+          This is the heart of the design — two always blocks. The first is the clock divider: a 26-bit counter that resets to zero whenever it reaches TICK_DIV minus one, emitting a one-cycle tick pulse each time. In silicon, TICK_DIV is fifty million, so tick fires once per second. The second always block is the shot clock itself. On reset — either chip reset or the user pressing the reset button — it loads thirty. Otherwise, when tick is high and pause isn't asserted and the count isn't already zero, it decrements by one. The crucial design choice here is synchronous reset rather than async. sky130 standard-cell flops can't async-reset to an arbitrary value — only to a constant zero or one. Synchronous reset becomes a simple 2-to-1 mux on the D input of each flop, which the synthesis tools map without any trouble.
+        </aside>
+      </section>
+
+      <!-- Slide 7: Pin assignments -->
+      <section>
+        <h2>Pin assignments</h2>
+        <table>
+          <thead>
+            <tr><th>Pin</th><th>Direction</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>ui[0]</code></td><td>input</td><td>RESET — reload count to 30</td></tr>
+            <tr><td><code>ui[1]</code></td><td>input</td><td>PAUSE — freeze count while held high</td></tr>
+            <tr><td><code>ui[2]</code></td><td>input</td><td>MODE — 0 = binary LEDs, 1 = 7-seg</td></tr>
+            <tr><td><code>uo[7]</code></td><td>output</td><td>BUZZER — high when count = 0</td></tr>
+            <tr><td><code>uo[4:0]</code></td><td>output (mode 0)</td><td>5-bit binary count → 5 LEDs</td></tr>
+            <tr><td><code>uo[6:0]</code></td><td>output (mode 1)</td><td>Ones-digit 7-segment (a..g)</td></tr>
+            <tr><td><code>uio[6:0]</code></td><td>output (mode 1)</td><td>Tens-digit 7-segment (a..g)</td></tr>
+            <tr><td><code>clk</code> / <code>rst_n</code> / <code>ena</code></td><td>—</td><td>Standard TT housekeeping</td></tr>
+          </tbody>
+        </table>
+        <aside class="notes">
+          The pinout. Three control inputs on ui zero, one, and two. The buzzer on uo[7] is always present regardless of display mode. In mode zero, the five low bits of uo are the binary value — wire them to five LEDs and they show the count in binary. In mode one, the seven low bits of uo encode the ones-digit segments, and seven of the eight bidirectional pins encode the tens-digit segments. So one switch flip changes which external hardware works — same chip, two demos.
+        </aside>
+      </section>
+
+      <!-- Slide 8: Verification -->
+      <section>
+        <h2>Verification — four cocotb tests</h2>
+        <ol>
+          <li><strong>Full countdown</strong> — verify shot_clock goes 30 → 29 → … → 0 over 30 ticks, then saturates at 0 and asserts the buzzer.</li>
+          <li><strong>Reset button</strong> — partway through countdown, press <code>ui[0]</code>; verify count snaps back to 30.</li>
+          <li><strong>Pause</strong> — hold <code>ui[1]</code>, verify count freezes for 10 ticks, then resumes on release.</li>
+          <li><strong>7-segment decode</strong> — verify mode-1 outputs match the encoded digits.</li>
+        </ol>
+        <p class="center"><span class="pass-banner">✓ TESTS=4  PASS=4  FAIL=0</span></p>
+        <p class="small center"><code>TICK_DIV</code> is parameterized — RTL sim uses <code>4</code>, the silicon uses <code>50,000,000</code>.</p>
+        <aside class="notes">
+          Four cocotb tests, all passing on every CI run. The first runs the full thirty-tick countdown — at every tick, it checks the output matches the expected value, and at the end it verifies the buzzer comes on and the count saturates at zero. The second test interrupts the countdown by pressing reset and verifies the count snaps back to thirty. The third asserts pause and verifies the count doesn't budge for many cycles, then releases pause and verifies counting resumes. The fourth tests the 7-segment decode path. One detail worth mentioning: the clock divider TICK_DIV is a Verilog parameter — in real silicon it's fifty million for a 1 Hz tick, but the testbench overrides it to four so the simulation finishes in milliseconds rather than minutes.
+        </aside>
+      </section>
+
+      <!-- Slide 9: Waveform -->
+      <section>
+        <h2>Simulation waveform</h2>
+        <img class="slide-image" src="waveform.png" alt="Simulation waveform" style="max-height: 62vh;">
+        <p class="small center"><code>shot_clock</code>: <code class="accent">30 → 29 → 28 → 27 → 26 → …</code> (one decrement per <code>tick</code>)</p>
+        <aside class="notes">
+          Here's the waveform from one of the cocotb tests, viewed in Surfer. You can see reset go high, the divider start counting, and then each time the tick pulse fires, the shot_clock register decrements by one. Thirty, twenty-nine, twenty-eight, and so on. The cadence in this simulation is artificially fast because of the parameter override I mentioned, but the silicon will produce exactly the same waveform stretched out by twelve and a half million.
+        </aside>
+      </section>
+
+      <!-- Slide 10: GDS -->
+      <section>
+        <h2>From RTL to silicon</h2>
+        <img class="slide-image" src="gds_render.png" alt="Hardened GDSII layout" style="max-height: 56vh;">
+        <p class="small muted center">Yosys synthesis → floorplan → placement → CTS → routing → DRC / LVS / STA → GDSII</p>
+        <aside class="notes">
+          And here's the final layout — the actual mask data that would go to the foundry. The dense cluster of standard cells is my real logic — the divider counter, the shot clock register, the BCD decode, the 7-seg lookup, and the output mux. The rest of the tile is filler and decoupling cells the flow inserts automatically. They have no logical function; they're there because the manufacturing process needs minimum-density rules satisfied across the whole tile, otherwise the chemical-mechanical polish step would dish out empty regions. The pipeline that produces this: Yosys does synthesis from Verilog to a netlist of standard cells. LibreLane handles floorplanning, placement, clock-tree synthesis, routing, all the design-rule and timing checks, and finally GDSII export. The whole flow runs in GitHub Actions in about three minutes.
+        </aside>
+      </section>
+
+      <!-- Slide 11: Lessons learned -->
+      <section>
+        <h2>What I learned</h2>
+        <ul>
+          <li><strong>Async vs sync reset matters at synthesis time.</strong> sky130 flops can't async-reset to a non-constant value — sync reset became a 2:1 mux on each flop's D input and mapped on the first try.</li>
+          <li><strong>Cocotb 2.0 sampling is subtle.</strong> Reads right after <code>RisingEdge</code> can return the pre-edge value; sampling on <code>FallingEdge</code> guarantees the NBAs have settled.</li>
+          <li><strong>Synthesized parameters are baked in.</strong> The RTL test overrode <code>TICK_DIV=4</code>, but the gate-level netlist hard-codes 50 M — so the GL test had to skip the slow countdown and run a smoke test.</li>
+          <li><strong>Pin sharing trumps pin count.</strong> 20 desired output signals into 16 pins — a mode bit and a small output mux solved it without growing the chip.</li>
+        </ul>
+        <aside class="notes">
+          A few things I learned the hard way. First — async-reset-to-non-constant is a synthesis trap on sky130. Knowing this up front, I used synchronous reset everywhere; it just becomes a 2-to-1 mux on each flop's D input and maps cleanly. Second — cocotb 2.0 returns from RisingEdge at the active edge, before the non-blocking assignments have actually settled. So my first attempt at sampling the output was reading the value from one cycle ago. Sampling on FallingEdge fixed it. Third — and this one bit me: my testbench overrode the divider parameter so simulation would run fast, but when the gate-level test ran on the synthesized netlist, the parameter had been replaced by the real fifty-million constant. The slow countdown tests timed out. I had to detect the gate-level environment in cocotb and substitute a fast smoke test. And fourth — design constraints force engineering choices. I wanted both display options, which needed twenty output pins, and I only had sixteen. A mode select bit and a small output mux made both options share the same pins without growing the chip.
+        </aside>
+      </section>
+
+      <!-- Slide 12: Thanks / Q&A -->
+      <section class="title-slide">
+        <h1>Thank you</h1>
+        <p class="subtitle">Repo &nbsp;<code>github.com/znielsen123/ece-429-tt-final</code></p>
+        <p class="subtitle">Datasheet &nbsp;<code>znielsen123.github.io/ece-429-tt-final</code></p>
+        <p class="accent" style="margin-top: 1.5em; font-size: 1.4em;">Questions?</p>
+        <aside class="notes">
+          Thanks for listening. The full project — Verilog, tests, datasheet, layout files, slide deck — is on GitHub at the repo link. Happy to take questions.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      width: 1280,
+      height: 800,
+      margin: 0.05,
+      transition: 'fade',
+      plugins: [RevealHighlight, RevealNotes]
+    });
+  </script>
+</body>
+</html>
