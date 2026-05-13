@@ -1,17 +1,17 @@
 # Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
-  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
-  language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  title:        "30-Second Basketball Shot Clock"
+  author:       "Zach Nielsen"
+  discord:      ""
+  description:  "A 30-second countdown shot clock with reset, pause, and a buzzer; selectable binary-LED or dual 7-segment display."
+  language:     "Verilog"
+  clock_hz:     50000000
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
-  tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
+  tiles: "1x1"
 
   # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_example"
+  top_module:  "tt_um_znielsen123"
 
   # List your project's source files here.
   # Source files must be in ./src and you must list each source file separately, one per line.
@@ -23,9 +23,9 @@ project:
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
+  ui[0]: "RESET_BTN (reload count to 30)"
+  ui[1]: "PAUSE (hold high to freeze the count)"
+  ui[2]: "MODE (0 = binary LEDs, 1 = 7-segment)"
   ui[3]: ""
   ui[4]: ""
   ui[5]: ""
@@ -33,23 +33,23 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "BIN[0] / SEG_A (ones)"
+  uo[1]: "BIN[1] / SEG_B (ones)"
+  uo[2]: "BIN[2] / SEG_C (ones)"
+  uo[3]: "BIN[3] / SEG_D (ones)"
+  uo[4]: "BIN[4] / SEG_E (ones)"
+  uo[5]: "SEG_F (ones, mode 1 only)"
+  uo[6]: "SEG_G (ones, mode 1 only)"
+  uo[7]: "BUZZER (high when count == 0)"
 
   # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
+  uio[0]: "SEG_A (tens, mode 1 only)"
+  uio[1]: "SEG_B (tens, mode 1 only)"
+  uio[2]: "SEG_C (tens, mode 1 only)"
+  uio[3]: "SEG_D (tens, mode 1 only)"
+  uio[4]: "SEG_E (tens, mode 1 only)"
+  uio[5]: "SEG_F (tens, mode 1 only)"
+  uio[6]: "SEG_G (tens, mode 1 only)"
   uio[7]: ""
 
 # Do not change!

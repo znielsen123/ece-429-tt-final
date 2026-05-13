@@ -1,42 +1,53 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# 30-Second Basketball Shot Clock — Tiny Tapeout
 
-- [Read the documentation for project](docs/info.md)
+A single-tile Tiny Tapeout (sky130) design that implements a 30-second
+basketball shot clock with reset, pause, and a buzzer output. The current
+count can be displayed either as a 5-bit value on LEDs or as two 7-segment
+digits, selectable with a mode pin.
 
-## What is Tiny Tapeout?
+**Author:** Zach Nielsen
+**Course:** ECE429, Spring 2026 — Valparaiso University
+**Top module:** `tt_um_znielsen123`
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+- [Datasheet (`docs/info.md`)](docs/info.md)
 
-To learn more and get started, visit https://tinytapeout.com.
+## Files
 
-## Set up your Verilog project
+| Path | What it is |
+|---|---|
+| `src/project.v` | Verilog RTL (clock divider + countdown + 7-seg decode). |
+| `info.yaml` | Tiny Tapeout project metadata and pinout. |
+| `test/tb.v` | Verilog testbench wrapper, with `TICK_DIV` overridden for fast sim. |
+| `test/test.py` | cocotb tests: full countdown, reset button, pause, 7-seg decode. |
+| `docs/info.md` | Datasheet content (How it works, How to test, pinout). |
 
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
+## Pinout
 
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
+| Pin | Function |
+|---|---|
+| `ui[0]` | RESET button (reload count to 30) |
+| `ui[1]` | PAUSE (hold high to freeze the count) |
+| `ui[2]` | MODE (0 = binary LEDs, 1 = 7-segment) |
+| `uo[7]` | BUZZER (high when count == 0) |
+| `uo[4:0]` (mode 0) | 5-bit binary count |
+| `uo[6:0]` (mode 1) | Ones-digit 7-segment (a..g) |
+| `uio[6:0]` (mode 1) | Tens-digit 7-segment (a..g) |
 
-## Enable GitHub actions to build the results page
+## Running the tests locally
 
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
+Requires `iverilog` and `cocotb`:
 
-## Resources
+```sh
+cd test
+make
+```
 
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
+Otherwise, push to the repo and GitHub Actions will run the tests
+automatically (~30 seconds).
 
-## What next?
+## Acknowledgements
 
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+Project workflow adapted from a guide put together by classmate
+**Fayol Ateufack** based on his ECE429 LFSR project.
