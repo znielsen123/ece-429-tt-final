@@ -27,8 +27,6 @@ Pause holds the count at its current value but does **not** stop the internal
 clock divider, so resuming continues on the original 1-second cadence (no way
 to game the timing by bouncing the pause switch).
 
-![Block diagram](block_diagram.png)
-
 ## How to test
 
 The design has two display modes. Pick one based on what external hardware
@@ -50,14 +48,6 @@ Then:
 4. Hold `ui[1]` (pause) high to freeze the count.
 5. When the count reaches 0, the buzzer LED on `uo[7]` lights and stays on
    until the next reset.
-
-A simulation waveform showing the first few ticks of a countdown in mode 0:
-
-![Simulation waveform](waveform.png)
-
-And the rendered sky130 layout:
-
-![GDS layout](gds_render.png)
 
 ## External hardware
 
